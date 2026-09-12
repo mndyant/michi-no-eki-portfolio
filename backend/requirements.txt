@@ -1,0 +1,32 @@
+# データパイプライン（GML/XLS/Wikipedia収集・チャンキング）
+# 注意: Python 3.14環境。wheelが無い固定ピンはビルド失敗するため下限指定を基本とする
+lxml>=6.1.0        # 5.x系は3.14用wheelがなくビルド失敗
+xlrd==2.0.2        # 旧形式.xls読み取り（list.xls用、純Pythonなので固定可）
+pydantic>=2.12     # 2.10系はpydantic-coreの3.14用wheelがなくビルド失敗
+pydantic-settings>=2.10
+requests>=2.32
+
+# ユーティリティ
+python-dotenv>=1.0
+tqdm>=4.67
+tenacity>=9.0
+
+# 開発・テスト
+pytest>=8.4
+
+# 注意: PyTorch系ライブラリは追加禁止（Python 3.14/Windows対応が不確実。docs/DESIGN.mdリスク表参照）
+
+# Webフレームワーク（Issue #2: FastAPI初期構成）
+fastapi>=0.115
+uvicorn[standard]>=0.34
+httpx>=0.28   # TestClient経由のAPIテストで使用
+
+# DB（Issue #3: SQLiteスキーマ定義）
+sqlalchemy>=2.0.36   # typed Mapped[]記法を使うため2.x系が必須
+
+# AI機能（Issue #52）。ANTHROPIC_API_KEY未設定時はapp/services/ai/llm_provider.pyが
+# 自動でNoneを返しルールベースにフォールバックするため、キー無しでも全機能が動く
+anthropic>=0.40
+
+# 写真アップロード（Issue #48: multipartフォーム解析に必要）
+python-multipart>=0.0.20
