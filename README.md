@@ -7,7 +7,7 @@
 > 下記の159駅・460チャンクの説明は元アプリの設計範囲を示すもので、このコピーで同梱される件数ではありません。
 > 現在の再現手順は、`backend/scripts/seed_demo.py` が作る自作の架空8駅データを対象にします。
 
-[![CI](https://github.com/mndyant/michi-no-eki/actions/workflows/ci.yml/badge.svg)](https://github.com/mndyant/michi-no-eki/actions/workflows/ci.yml)
+[![CI](https://github.com/mndyant/michi-no-eki-portfolio/actions/workflows/ci.yml/badge.svg)](https://github.com/mndyant/michi-no-eki-portfolio/actions/workflows/ci.yml)
 
 近畿道の駅スタンプラリー（大阪・京都・兵庫・奈良・和歌山・滋賀・福井、全159駅）における
 **実際の巡回計画の課題を解決するための意思決定支援アプリ**です。
@@ -26,7 +26,7 @@
 
 ## スクリーンショット
 
-**自動ルート提案**: 自然文入力（方面・時間帯・高速利用の指定）の解釈結果とともに3プランを比較表示
+**自動ルート提案**: 自然文入力（方面・時間帯・高速利用の指定）の解釈結果とともに最大5プランを比較表示
 （画面画像は目視確認後に追加）
 
 **手動ルート計算結果**: 到着/出発時刻表・スタンプ受付締切までの余裕・What-ifシミュレーションパネル
@@ -47,7 +47,7 @@
 
 ## 主な機能
 
-全フェーズ実装済みです。
+巡回計画・訪問記録・条件入力の機能を実装しています。現在の同梱デモは架空8駅です。
 
 | 機能 | 状態 |
 |---|---|
@@ -60,7 +60,7 @@
 | AI機能（自然文での条件入力、プランごとの推薦理由生成） | ✅ フェーズ5 |
 | RAG検索基盤（SQLite FTS5）による名産・特徴のルールベース抽出 | ✅ フェーズ5 |
 
-各フェーズの実装・検証の詳細は [PROGRESS.md](PROGRESS.md) を参照してください。
+機能とデータモデルは [設計書](docs/DESIGN.md) を参照してください。実施設での所要時間・営業時間の精度検証は今後の課題です。
 
 ## 技術スタック
 
@@ -71,55 +71,65 @@
 | DB | SQLite（将来PostgreSQL移行可能な設計） | セットアップ不要で第三者が即座に動かせる |
 | 検索（RAG） | SQLite FTS5（trigramトークナイザ） | 依存ゼロで日本語の部分一致検索が可能。ベクトル検索は非対応 |
 | 移動時間 | Haversine距離×道路係数（既定）/ OSRM（任意） | 有料APIに依存しない |
-| LLM | Anthropic Claude API（**任意**） | キー未設定でも全機能がルールベースで動作（`app/services/ai/llm_provider.py`） |
+| LLM | Anthropic Claude API（**任意**） | キー未設定時はルールによる条件解釈・推薦理由を使用 |
 | 最終ナビ | Google Maps ディープリンクURL | APIキー不要・無料 |
 | CI | GitHub Actions | PRごとにbackend pytest・frontend lint/buildを自動実行 |
 
-**設計方針: APIキーが1つも無くても全機能が動く。** 外部連携はすべてプロバイダインター
-フェースで抽象化し、モック/フォールバック実装を備えています。
+APIキーなしでルート計算・訪問記録のデモを動かせます。LLMによる自由文の解釈とルールによる解釈では対応範囲が異なります。
+検索チャンクは同梱していないため、実データの名産検索はこのデモの対象外です。
 
 ## セットアップ
 
 ### 必要なもの
 
-- Python 3.11+（開発環境は3.14）
-- Node.js 20+（開発環境はv24）
+- Python 3.14（Windows検証環境）
+- Node.js 22以上（CIは22）
 - APIキーは**不要**（任意でAnthropic APIキーを設定可能）
 
 ### バックエンド
 
-```bash
+PowerShellの例です。リポジトリのルートから実行します。
+
+```powershell
 cd backend
 python -m venv .venv
-.venv\Scripts\activate          # Windows
-# source .venv/bin/activate     # Mac/Linux
-pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 
-# DB初期化（ポートフォリオ確認用）
-python scripts/init_db.py
-# PowerShell: $env:MICHI_DB_PATH = "$PWD\demo-portfolio.db"; python scripts/seed_demo.py
-# Mac/Linux:  MICHI_DB_PATH=./demo-portfolio.db python scripts/seed_demo.py
+# 初回だけ実行。既存の駅があるDBへの再投入は拒否します。
+$env:MICHI_DB_PATH = Join-Path $PWD 'demo-portfolio.db'
+$env:DISTANCE_PROVIDER = 'haversine'
+$env:ANTHROPIC_API_KEY = ''
+.\.venv\Scripts\python.exe scripts/seed_demo.py
 
-# RAG検索・名産抽出データの投入（第三者データの許諾確認後のみ）
-python scripts/load_chunks.py
-python scripts/extract_specialties.py
-
-# 起動（http://localhost:8000、API仕様は /docs で確認可）
-uvicorn app.main:app --reload --port 8000
+# 同じPowerShellで起動して同じDBを使用
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Windowsで `python` コマンドがMicrosoft Storeにリダイレクトされる場合は、venv作成のみ
-`%LOCALAPPDATA%\Python\pythoncore-3.14-64\python.exe` のような実行環境のフルパスを使い、
-以降は `.venv\Scripts\python.exe` を使ってください。
+再起動するときも同じ `MICHI_DB_PATH` を指定し、シード投入を省略してください。
+API仕様は `http://127.0.0.1:8000/docs` で確認できます。
+Mac/Linuxでは `export MICHI_DB_PATH="$PWD/demo-portfolio.db"` と設定し、Python実行パスを `.venv/bin/python` に読み替えます。
 
 ### フロントエンド
 
-```bash
+別のPowerShellで、リポジトリのルートから実行します。
+
+```powershell
 cd frontend
-npm install
-copy .env.local.example .env.local   # Windows（Mac/Linuxは cp）
+npm ci
+$env:NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8000'
 npm run dev
 # → http://localhost:3000
+```
+
+### テスト
+
+```powershell
+# backend/ で実行。実APIへの接続は不要です。
+.\.venv\Scripts\python.exe -m pytest tests -q
+# frontend/ で実行
+npm test
+npm run lint
+npm run build
 ```
 
 ### 環境変数（任意）
@@ -160,7 +170,7 @@ michi-no-eki/
 - このポートフォリオコピーには、第三者データの再配布条件を確認するまで、
   `stations_kinki.json` と `chunks.json` を同梱しません。実データを使う場合は、
   取得時点の条件・出典表示・配布形態を確認し、許諾確認後に別途投入してください。
-  目視確認とCIは `backend/scripts/seed_demo.py` の自作・架空8駅で再現できます。
+  画面確認は `backend/scripts/seed_demo.py` の自作・架空8駅で再現できます。CIは独立したテストデータを使います。
 - `scripts/seed.py` はupsert方式のため、**再実行しても訪問済みフラグ・滞在時間カスタム・
   訪問記録・口コミ等のユーザーデータは失われません**（実行前にdata.dbを自動バックアップもします）
 - **1次情報（元アプリの設計上の参照先）**: [国土数値情報（道の駅データ）](https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-P35.html) — 公開前に個別利用条件を確認する
@@ -180,14 +190,13 @@ michi-no-eki/
 ## 開発の進め方
 
 - Issue単位のfeatureブランチ → Pull Request → mainへマージ
-- 進捗は [PROGRESS.md](PROGRESS.md)、設計判断は [docs/DESIGN.md](docs/DESIGN.md) に記録
-- 2026年5月まではRAG検索アプリとして開発し、同7月に巡回計画支援へ全面ピボット
-  （旧実装はタグ `pre-pivot-streamlit-rag` に保存。データ収集資産は継続利用）
+- 設計判断は [docs/DESIGN.md](docs/DESIGN.md) に記録
+- 既存の個人開発から導入したコピーです。このリポジトリの履歴は導入時点からの整備・修正を記録します。
 
 ## ライセンス・利用上の注意
 
 - コードは [MITライセンス](LICENSE) です
-- 同梱データ（道の駅基本データ・Wikipedia由来チャンク）の出典・利用条件は
+- 非同梱の第三者データの出典・利用条件の確認状況は
   [data/README.md](data/README.md) を参照してください
 - OSRM公開デモサーバは個人学習・ポートフォリオ用途に限定して利用しています
 - 口コミ・名産品情報は要約のみを扱い、取得元と確認日を記録します
