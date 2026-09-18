@@ -4,9 +4,23 @@
 # （文字列⇔JSONの変換はapp/services/station_service.pyが担当する）
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+def _validate_hhmm(value: str) -> str:
+    """スタンプ受付時刻がHH:MM形式であることを確認する（schemas/route.pyと同じ規約）。
+
+    形式不正な値をDBへ入れると、その駅を含むルート計算（strptime）が
+    一律500になるため、入力スキーマ（Create/Update）の段階で拒否する。
+    応答用のStationReadには適用しない（既存DBの値で取得系まで失敗させないため）。
+    """
+    try:
+        datetime.strptime(value, "%H:%M")
+    except ValueError as exc:
+        raise ValueError("時刻はHH:MM形式で指定してください") from exc
+    return value
 
 
 class StationBase(BaseModel):
@@ -46,6 +60,18 @@ class StationBase(BaseModel):
 class StationCreate(StationBase):
     """POST /api/stations 用。基本CRUD確認用（通常はシード投入で足りる）"""
 
+    @field_validator("stamp_start", "stamp_end")
+    @classmethod
+    def validate_stamp_times(cls, value: str) -> str:
+        return _validate_hhmm(value)
+
+    @field_validator("stay_time_min_default")
+    @classmethod
+    def validate_stay_time(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError("滞在時間は0分以上で指定してください")
+        return value
+
 
 class StationUpdate(BaseModel):
     """PUT /api/stations/{id} 用。渡された項目だけ上書きする（部分更新）"""
@@ -79,6 +105,18 @@ class StationUpdate(BaseModel):
     user_memo: str | None = None
     source: str | None = None
     last_verified_at: date | None = None
+
+    @field_validator("stamp_start", "stamp_end")
+    @classmethod
+    def validate_stamp_times(cls, value: str | None) -> str | None:
+        return _validate_hhmm(value) if value is not None else None
+
+    @field_validator("stay_time_min_default")
+    @classmethod
+    def validate_stay_time(cls, value: int | None) -> int | None:
+        if value is not None and value < 0:
+            raise ValueError("滞在時間は0分以上で指定してください")
+        return value
 
 
 class StationRead(StationBase):

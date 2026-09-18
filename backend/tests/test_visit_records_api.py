@@ -96,6 +96,27 @@ def test_update_record_partial(records_client: TestClient) -> None:
     assert body["want_revisit"] is True
 
 
+def test_update_record_ignores_null_for_required_fields(records_client: TestClient) -> None:
+    """NOT NULL列（visit_date/purchased_items/food）への明示的nullは無視して200を返す。
+
+    修正前はNULLがそのままsetattrされ、IntegrityErrorで500になっていた。
+    """
+    created = records_client.post(
+        "/api/stations/1/visit-records", json=_record_payload()
+    ).json()
+    response = records_client.put(
+        f"/api/visit-records/{created['id']}",
+        json={"visit_date": None, "purchased_items": None, "food": None, "impression": None},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    # NOT NULL列は変更されず、null許容列（impression）だけがクリアされる
+    assert body["visit_date"] == "2026-07-12"
+    assert body["purchased_items"] == ["みかんジュース", "梅干し"]
+    assert body["food"] == ["しらす丼"]
+    assert body["impression"] is None
+
+
 def test_delete_record(records_client: TestClient) -> None:
     created = records_client.post(
         "/api/stations/1/visit-records", json=_record_payload()

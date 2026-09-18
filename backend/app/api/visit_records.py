@@ -98,9 +98,14 @@ def update_visit_record(
     """訪問記録を部分更新する（渡されたフィールドのみ上書き）。"""
     record = _get_record(db, record_id)
     data = payload.model_dump(exclude_unset=True)
-    if "purchased_items" in data and data["purchased_items"] is not None:
+    # NOT NULL列への明示的nullは「変更なし」として無視する。
+    # 素通しするとsetattrでNULLが書かれ、IntegrityError（=API 500）になる
+    for field in ("visit_date", "purchased_items", "food"):
+        if field in data and data[field] is None:
+            data.pop(field)
+    if "purchased_items" in data:
         record.purchased_items = json.dumps(data.pop("purchased_items"), ensure_ascii=False)
-    if "food" in data and data["food"] is not None:
+    if "food" in data:
         record.food = json.dumps(data.pop("food"), ensure_ascii=False)
     for field, value in data.items():
         setattr(record, field, value)

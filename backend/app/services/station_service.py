@@ -75,6 +75,10 @@ def create_station(db: Session, payload: StationCreate) -> Station:
 def update_station(db: Session, station: Station, payload: StationUpdate) -> Station:
     """渡された項目だけを上書きする（滞在時間・メモ・営業時間の個別上書き等を想定）"""
     data = _dump_json_fields(payload.model_dump(exclude_unset=True))
+    # 部分更新の必須列へのnullは変更なし。任意列のnullは削除として保持する。
+    for column in Station.__table__.columns:
+        if not column.nullable and data.get(column.name, ...) is None:
+            data.pop(column.name)
     for key, value in data.items():
         setattr(station, key, value)
     db.commit()

@@ -94,6 +94,20 @@ def test_health_check(client: TestClient):
     assert res.json() == {"status": "ok"}
 
 
+def test_update_required_null_preserves_station(client: TestClient):
+    response = client.put("/api/stations/1", json={
+        "name": None, "stamp_end": None, "business_hours": None,
+        "stay_time_min_default": None, "address": None,
+    })
+    assert response.status_code == 200
+    body = response.json()
+    assert body["name"] == "テスト道の駅"
+    assert body["stamp_end"] == "17:00"
+    assert body["business_hours"] == {"mon": "09:00-17:00"}
+    assert body["stay_time_min_default"] == 15
+    assert body["address"] is None
+
+
 def test_list_stations_returns_seeded_station(client: TestClient):
     res = client.get("/api/stations")
     assert res.status_code == 200

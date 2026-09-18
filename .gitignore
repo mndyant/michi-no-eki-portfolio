@@ -26,28 +26,23 @@ ENV/
 # 環境変数（絶対コミットしない）
 .env
 .env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.*.example
 
-# データファイル（生データ・加工済みデータは基本git管理外）
-# 注意: ディレクトリ丸ごと除外（data/raw/ 等）にすると、配下のファイルは
-# 親ディレクトリごと無視されるため "!data/raw/foo.json" の再包含が効かない。
-# そのため「ディレクトリ内容をワイルドカードで除外 + 個別ファイルを再包含」の形にする。
-# シードデータ2点（stations_kinki.json, chunks.json）はgit管理に含め、
-# それ以外（reviews/・list.xls・P35-18_GML/・wiki/ 等）は引き続き除外する。
+# 第三者データ・運用データは同梱しない
 data/raw/*
 !data/raw/.gitkeep
-!data/raw/stations_kinki.json
 
 data/processed/*
 !data/processed/.gitkeep
-!data/processed/chunks.json
 
 data/embeddings/
 data/photos/
 !data/.gitkeep
 
 # IDE
-.vscode/settings.json
+.vscode/
 .idea/
 *.swp
 *.swo
@@ -89,3 +84,11 @@ out/
 data/raw/stations_kinki.json
 data/processed/chunks.json
 backend/scratch/
+
+*.db-wal
+*.db-shm
+*.sqlite3-wal
+*.sqlite3-shm
+*.pem
+*.key
+credentials*.json

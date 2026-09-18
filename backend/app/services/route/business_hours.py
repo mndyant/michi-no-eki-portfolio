@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, datetime
 
 # app/services/seed_transform.py の WEEKDAYS と一致させる（曜日キー）
 WEEKDAY_CODES = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
@@ -33,7 +33,15 @@ def resolve_open_time(business_hours_json: str, weekday: str) -> str | None:
         return None
     start, _, _end = value.partition("-")
     start = start.strip()
-    return start or None
+    if not start:
+        return None
+    # "9am-5pm" のようにHH:MMとして解析できない値は「制約なし」に倒す。
+    # ここで素通しすると後段のtimetable計算がValueError（=API 500）になる
+    try:
+        datetime.strptime(start, "%H:%M")
+    except ValueError:
+        return None
+    return start
 
 
 def is_closed_day(closed_days: str, weekday: str) -> bool:

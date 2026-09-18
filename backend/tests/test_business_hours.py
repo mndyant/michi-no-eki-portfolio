@@ -35,6 +35,19 @@ def test_resolve_open_time_returns_none_for_empty_or_invalid_json() -> None:
     assert resolve_open_time("not json", "mon") is None
 
 
+def test_resolve_open_time_returns_none_for_unparsable_start() -> None:
+    """HH:MMとして解析できない開始時刻は制約なし（None）に倒す。
+
+    素通しするとcalculate_timetableのstrptimeがValueErrorになり、
+    visit_date指定のルート計算APIが500を返してしまう（レビューで再現済み）。
+    """
+    assert resolve_open_time('{"mon": "9am-5pm"}', "mon") is None
+    assert resolve_open_time('{"mon": "24時間営業-"}', "mon") is None
+    assert resolve_open_time('{"mon": " - "}', "mon") is None
+    # 1桁時はstrptimeが受理するため従来どおり返す
+    assert resolve_open_time('{"mon": "9:00-17:00"}', "mon") == "9:00"
+
+
 def test_is_closed_day_matches_comma_separated_codes() -> None:
     assert is_closed_day("wed,thu", "wed") is True
     assert is_closed_day("wed,thu", "thu") is True

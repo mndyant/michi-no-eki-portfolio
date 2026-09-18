@@ -48,7 +48,10 @@ function SlackBadge({ stop }: { stop: WhatIfStop }) {
 export default function WhatIfPanel({ baseRequest, baseStops }: WhatIfPanelProps) {
   const [delayMin, setDelayMin] = useState(0);
   const [excludedIds, setExcludedIds] = useState<number[]>([]);
-  const [returnBy, setReturnBy] = useState("");
+  // 帰着締切は元プランの値（逆算モードで指定したもの）を引き継ぐ。
+  // 空で初期化すると、元プランの前提だった締切が再計算から黙って外れてしまう
+  const baseReturnBy = baseRequest.return_by ?? "";
+  const [returnBy, setReturnBy] = useState(baseReturnBy);
   const [highwayLegs, setHighwayLegs] = useState<number[]>([]);
   const [result, setResult] = useState<WhatIfRouteResponse | null>(null);
   const [pending, setPending] = useState(false);
@@ -57,7 +60,7 @@ export default function WhatIfPanel({ baseRequest, baseStops }: WhatIfPanelProps
   const requestSeq = useRef(0);
 
   const isModified =
-    delayMin > 0 || excludedIds.length > 0 || returnBy !== "" || highwayLegs.length > 0;
+    delayMin > 0 || excludedIds.length > 0 || returnBy !== baseReturnBy || highwayLegs.length > 0;
   const allExcluded = excludedIds.length >= baseRequest.station_ids.length;
 
   // 高速区間の選択肢は「除外適用後」のルートに対する区間（バックエンドの解釈と一致させる）
@@ -95,10 +98,23 @@ export default function WhatIfPanel({ baseRequest, baseStops }: WhatIfPanelProps
         if (seq === requestSeq.current) setPending(false);
       }
     }, 400);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      // リセット・全駅除外・アンマウント後の応答も無効にする。
+      requestSeq.current += 1;
+    };
   }, [baseRequest, delayMin, excludedIds, returnBy, highwayLegs, isModified, allExcluded]);
 
+  function clearPreviousResult() {
+    // デバウンス待機中も前の条件の結果や地図を表示しない。
+    requestSeq.current += 1;
+    setResult(null);
+    setError(null);
+    setPending(false);
+  }
+
   function toggleExcluded(stationId: number) {
+    clearPreviousResult();
     setExcludedIds((current) =>
       current.includes(stationId)
         ? current.filter((id) => id !== stationId)
@@ -109,6 +125,7 @@ export default function WhatIfPanel({ baseRequest, baseStops }: WhatIfPanelProps
   }
 
   function toggleHighwayLeg(index: number) {
+    clearPreviousResult();
     setHighwayLegs((current) =>
       current.includes(index)
         ? current.filter((leg) => leg !== index)
@@ -117,9 +134,10 @@ export default function WhatIfPanel({ baseRequest, baseStops }: WhatIfPanelProps
   }
 
   function reset() {
+    clearPreviousResult();
     setDelayMin(0);
     setExcludedIds([]);
-    setReturnBy("");
+    setReturnBy(baseReturnBy);
     setHighwayLegs([]);
   }
 
@@ -149,14 +167,14 @@ export default function WhatIfPanel({ baseRequest, baseStops }: WhatIfPanelProps
           </span>
           <input
             type="range" min="0" max="180" step="5" value={delayMin}
-            onChange={(e) => setDelayMin(Number(e.target.value))}
+            onChange={(e) => { clearPreviousResult(); setDelayMin(Number(e.target.value)); }}
             className="accent-violet-600"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-zinc-600 dark:text-zinc-400">帰着締切（任意）</span>
           <input
-            type="time" value={returnBy} onChange={(e) => setReturnBy(e.target.value)}
+            type="time" value={returnBy} onChange={(e) => { clearPreviousResult(); setReturnBy(e.target.value); }}
             className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
           />
         </label>

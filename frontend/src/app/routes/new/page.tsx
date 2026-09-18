@@ -120,8 +120,14 @@ export default function NewRoutePage() {
     setOriginLabel(OSAKA_STATION.label);
   }
 
+  function clearPreviousResult() {
+    setResult(null);
+    setResultRequest(null);
+  }
+
   async function handleCalculate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    clearPreviousResult();
     setCalculateError(null);
     const lat = Number(originLat);
     const lon = Number(originLon);
@@ -191,7 +197,7 @@ export default function NewRoutePage() {
         </p>
       </div>
 
-      <form onSubmit={handleCalculate} className="flex flex-col gap-6">
+      <form onSubmit={handleCalculate} onInvalidCapture={clearPreviousResult} className="flex flex-col gap-6">
         <section aria-labelledby="origin-heading" className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="origin-heading" className="font-semibold">1. 出発条件</h2>

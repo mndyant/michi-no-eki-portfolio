@@ -6,8 +6,8 @@
 #   .venv/Scripts/python.exe scripts/seed.py
 #
 # 何度実行しても安全なupsert方式（Issue #82）:
-#   station_id（NOID_駅は駅名由来の安定ハッシュID）を第一キー、nameをフォールバックキーに
-#   既存駅を照合し、シード由来フィールドのみ上書きする。
+#   GML由来IDの駅はstation_id一致のみ、NOID_駅（駅名由来の安定ハッシュID）はname一致のみで
+#   既存駅を照合し（詳細はapp/services/seed_service.py）、シード由来フィールドのみ上書きする。
 #   visited/visited_date/stay_time_min_default/reputation_items/訪問記録などのユーザーデータは
 #   一切削除・上書きしない（実処理は app/services/seed_service.py に切り出し済み）。
 #   実行前にdata.dbが存在すればdata.db.bakへ自動バックアップする。

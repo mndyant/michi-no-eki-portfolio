@@ -415,7 +415,7 @@ def upsert_stations(
         _apply_business_hours_fields(station, row)
         station.cluster_id = cluster_id
 
-        # station_idの付け替え（nameフォールバックで照合された場合等）は即時反映せず、
+        # station_idの付け替え（NOID_駅がname一致で照合された場合等）は即時反映せず、
         # 全行の処理後に二段階更新でまとめて行う
         if station.station_id != row["station_id"]:
             station_id_changes.append((station, row["station_id"]))

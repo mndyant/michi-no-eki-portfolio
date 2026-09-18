@@ -1,6 +1,8 @@
 # Claude API呼び出しの抽象化（distance providerと同じパターン）。
 # ANTHROPIC_API_KEY未設定・SDK未インストール・呼び出し失敗のいずれでもNoneを返すので、
-# 呼び出し側（nl_parser/reason_generator）は必ずルールベース結果へフォールバックすること。
+# 呼び出し側は必ずルールベース結果へフォールバックすること。
+# 現在の呼び出し元はscripts/extract_reputation.py（口コミからの人気商品抽出）のみ。
+# アプリ本体のnl_parser/reason_generatorはルールベースのみでLLMを呼ばない。
 # これにより「APIキー無しでも全機能が動く」制約（CLAUDE.md）を満たす。
 from __future__ import annotations
 

@@ -92,6 +92,7 @@ export default function SuggestRoutePage() {
 
   async function handleSuggest(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setResult(null);
     setSuggestError(null);
     const lat = Number(originLat);
     const lon = Number(originLon);
@@ -134,7 +135,7 @@ export default function SuggestRoutePage() {
         </p>
       </div>
 
-      <form onSubmit={handleSuggest} className="flex flex-col gap-6">
+      <form onSubmit={handleSuggest} onInvalidCapture={() => setResult(null)} className="flex flex-col gap-6">
         <section aria-labelledby="condition-heading" className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="condition-heading" className="font-semibold">出発条件</h2>
