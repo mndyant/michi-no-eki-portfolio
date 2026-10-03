@@ -87,7 +87,7 @@ export default function RouteResult({
           プラン結果
         </h2>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          条件を編集して「プラン計算」を押すと、同じ場所で再計算できます。
+          直前に計算した条件の結果です。条件を編集した後は「プラン計算」で再計算してください。
         </p>
       </div>
 

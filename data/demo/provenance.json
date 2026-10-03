@@ -1,0 +1,8 @@
+{
+  "source_filename": "stations_kinki.json",
+  "source_sha256": "9215a851f22cbfe10409a88250fce587c378ffaa2b8b95781b8abbff7bd1fa14",
+  "selection": "pref == 大阪府",
+  "station_count": 10,
+  "description": "作成者提供の簡易JSONから、本人の指示に基づいて大阪府の公開駅情報のみ抽出。値は変更していません。",
+  "limitations": "営業時間・スタンプ受付・休業日・現在の営業状況は未確認。抽出日を確認日とは扱いません。"
+}

@@ -29,7 +29,7 @@ export default function SuggestRoutePage() {
   const [departureTime, setDepartureTime] = useState("08:00");
   // 訪問日（任意）。指定すると曜日別営業時間・定休日をサーバー側で評価する（Issue #71）
   const [visitDate, setVisitDate] = useState("");
-  const [maxStations, setMaxStations] = useState("9");
+  const [maxStations, setMaxStations] = useState(process.env.NEXT_PUBLIC_DEMO === "1" ? "3" : "9");
   const [selectedPrefs, setSelectedPrefs] = useState<string[]>([]);
   const [selectedDirections, setSelectedDirections] = useState<string[]>([]);
   const [includeVisited, setIncludeVisited] = useState(false);
@@ -157,7 +157,7 @@ export default function SuggestRoutePage() {
               <input required type="time" value={departureTime} onChange={(e) => setDepartureTime(e.target.value)} className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900" />
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-zinc-600 dark:text-zinc-400">上限駅数（通常は9のまま）</span>
+              <span className="text-zinc-600 dark:text-zinc-400">上限駅数（1〜9駅）</span>
               <input required type="number" min="1" max="9" step="1" value={maxStations} onChange={(e) => setMaxStations(e.target.value)} className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900" />
             </label>
             <label className="flex flex-col gap-1 text-sm">
@@ -193,6 +193,7 @@ export default function SuggestRoutePage() {
             </span>
             <textarea
               value={freeText}
+              maxLength={process.env.NEXT_PUBLIC_DEMO === "1" ? 500 : undefined}
               onChange={(e) => setFreeText(e.target.value)}
               placeholder="例: 南方面を回って16:30までに最終駅に着きたい"
               rows={2}
@@ -205,7 +206,7 @@ export default function SuggestRoutePage() {
               {DIRECTIONS.map((direction) => (
                 <label
                   key={direction}
-                  className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                  className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-emerald-600 ${
                     selectedDirections.includes(direction)
                       ? "border-blue-600 bg-blue-600 text-white"
                       : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
@@ -224,7 +225,7 @@ export default function SuggestRoutePage() {
               {prefs.map((pref) => (
                 <label
                   key={pref}
-                  className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                  className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-emerald-600 ${
                     selectedPrefs.includes(pref)
                       ? "border-blue-600 bg-blue-600 text-white"
                       : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
@@ -254,7 +255,7 @@ export default function SuggestRoutePage() {
           <div>
             <h2 id="plans-heading" className="text-xl font-semibold">提案プラン</h2>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              候補{result.candidate_count}駅から生成しました。条件を変えて再提案できます。
+              候補{result.candidate_count}駅から生成しました。直前に提案した条件の結果です。条件を変えた後は再提案してください。
             </p>
           </div>
 

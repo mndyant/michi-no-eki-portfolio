@@ -19,8 +19,14 @@ import FilterBar, { type VisitedFilter } from "./_components/FilterBar";
 import StationCard from "./_components/StationCard";
 import StationTable from "./_components/StationTable";
 import VisitRecordsModal from "./_components/VisitRecordsModal";
+import DemoStations from "./_components/DemoStations";
+import { PUBLIC_DEMO } from "@/lib/demo";
 
 export default function StationsPage() {
+  return PUBLIC_DEMO ? <DemoStations /> : <LocalStationsPage />;
+}
+
+function LocalStationsPage() {
   const [stations, setStations] = useState<Station[]>([]);
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [loading, setLoading] = useState(true);

@@ -1,0 +1,6 @@
+"""Vercel ASGI entrypoint for the public, stateless portfolio demo."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "backend"))
+from app.public_demo import app  # noqa: E402, F401

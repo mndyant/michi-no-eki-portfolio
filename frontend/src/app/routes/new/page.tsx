@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import RouteResult from "./_components/RouteResult";
 import WhatIfPanel from "./_components/WhatIfPanel";
+import { PUBLIC_DEMO } from "@/lib/demo";
 
 type VisitedFilter = "all" | "unvisited" | "visited";
 
@@ -58,7 +59,10 @@ export default function NewRoutePage() {
       setLoadError(null);
       try {
         const data = await fetchStations();
-        if (!controller.signal.aborted) setStations(data);
+        if (!controller.signal.aborted) {
+          setStations(data);
+          if (PUBLIC_DEMO) setSelectedIds(["P35_721", "P35_718", "P35_720"].flatMap((key) => data.filter((s) => s.station_id === key).map((s) => s.id)));
+        }
       } catch (error) {
         if (!controller.signal.aborted) {
           setLoadError(error instanceof ApiError ? error.message : "道の駅の取得に失敗しました");
@@ -198,6 +202,7 @@ export default function NewRoutePage() {
       </div>
 
       <form onSubmit={handleCalculate} onInvalidCapture={clearPreviousResult} className="flex flex-col gap-6">
+        {PUBLIC_DEMO && <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-950"><div><h2 className="font-bold">まずは大阪駅発、南河内3駅のサンプル</h2><p className="mt-1 text-sm">最初は3駅をセットしています。下で条件を変更できます。</p><p className="mt-2 text-sm" aria-live="polite">現在の選択：{selectedStations.map((s) => s.name).join(" → ") || "駅を選択してください"}</p></div><button type="submit" disabled={loading || calculating || selectedIds.length === 0} className="rounded-lg bg-emerald-800 px-5 py-3 font-semibold text-white disabled:opacity-50">{calculating ? "計算中…" : "この条件で計算する"}</button></section>}
         <section aria-labelledby="origin-heading" className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="origin-heading" className="font-semibold">1. 出発条件</h2>
