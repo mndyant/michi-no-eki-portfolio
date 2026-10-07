@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import OriginPicker from "@/app/_components/OriginPicker";
+import { DEFAULT_ORIGIN } from "@/lib/origins";
 import {
   ApiError,
   fetchStations,
@@ -10,7 +12,7 @@ import {
 } from "@/lib/api";
 import PlanCard from "./_components/PlanCard";
 
-const OSAKA_STATION = { lat: "34.7025", lon: "135.4959", label: "大阪駅" };
+
 
 // 方面フィルタの8方位（バックエンドのDIRECTION_KEYSと一致させる）
 const DIRECTIONS = ["北", "北東", "東", "南東", "南", "南西", "西", "北西"] as const;
@@ -23,9 +25,7 @@ export default function SuggestRoutePage() {
   const [stations, setStations] = useState<Station[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [originLat, setOriginLat] = useState(OSAKA_STATION.lat);
-  const [originLon, setOriginLon] = useState(OSAKA_STATION.lon);
-  const [originLabel, setOriginLabel] = useState(OSAKA_STATION.label);
+  const [origin, setOrigin] = useState(DEFAULT_ORIGIN);
   const [departureTime, setDepartureTime] = useState("08:00");
   // 訪問日（任意）。指定すると曜日別営業時間・定休日をサーバー側で評価する（Issue #71）
   const [visitDate, setVisitDate] = useState("");
@@ -84,27 +84,16 @@ export default function SuggestRoutePage() {
     );
   }
 
-  function useOsakaStation() {
-    setOriginLat(OSAKA_STATION.lat);
-    setOriginLon(OSAKA_STATION.lon);
-    setOriginLabel(OSAKA_STATION.label);
-  }
 
   async function handleSuggest(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setResult(null);
     setSuggestError(null);
-    const lat = Number(originLat);
-    const lon = Number(originLon);
-    if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) {
-      setSuggestError("出発地の緯度は-90〜90、経度は-180〜180の数値で入力してください。");
-      return;
-    }
 
     setSuggesting(true);
     try {
       const response = await suggestRoutes({
-        origin: { lat, lon, label: originLabel || null },
+        origin,
         departure_time: departureTime,
         max_stations: Number(maxStations),
         prefs: selectedPrefs,
@@ -139,19 +128,9 @@ export default function SuggestRoutePage() {
         <section aria-labelledby="condition-heading" className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="condition-heading" className="font-semibold">出発条件</h2>
-            <button type="button" onClick={useOsakaStation} className="rounded border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900">
-              大阪駅をセット
-            </button>
           </div>
+          <OriginPicker value={origin} disabled={suggesting} onChange={(next) => { setOrigin(next); setResult(null); setSuggestError(null); }} />
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-zinc-600 dark:text-zinc-400">緯度</span>
-              <input required type="number" step="any" min="-90" max="90" value={originLat} onChange={(e) => { setOriginLat(e.target.value); setOriginLabel("指定地点"); }} className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900" />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-zinc-600 dark:text-zinc-400">経度</span>
-              <input required type="number" step="any" min="-180" max="180" value={originLon} onChange={(e) => { setOriginLon(e.target.value); setOriginLabel("指定地点"); }} className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900" />
-            </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-zinc-600 dark:text-zinc-400">出発時刻</span>
               <input required type="time" value={departureTime} onChange={(e) => setDepartureTime(e.target.value)} className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900" />
