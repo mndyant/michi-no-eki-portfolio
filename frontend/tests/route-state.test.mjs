@@ -46,9 +46,48 @@ test('手動: 成功後に全駅解除して送信すると古い結果とWhat-i
 
 test('手動: 必須入力が空の送信でも古い結果を取り下げる', async () => {
   await manualSuccess();
-  fireEvent.change(screen.getByRole('spinbutton', { name: '緯度' }), { target: { value: '' } });
+  fireEvent.change(screen.getByLabelText('出発時刻', { exact: true }), { target: { value: '' } });
   fireEvent.click(screen.getByRole('button', { name: 'プラン計算', exact: true }));
   assert.ok(!screen.queryByRole('region', { name: 'プラン結果' }));
+});
+
+test('手動: 位置情報なしで堺を選ぶと、そのエリアの座標と名称で計算できる', async () => {
+  const bodies = [];
+  globalThis.fetch = async (url, init) => {
+    if (String(url).endsWith('/stations')) return json(stations);
+    bodies.push(JSON.parse(init.body));
+    return json(result);
+  };
+  render(React.createElement(NewRoute));
+  fireEvent.click(await screen.findByRole('checkbox', { name: 'テスト駅大阪府' }));
+  fireEvent.change(screen.getByRole('combobox', { name: '大体の出発エリア（車）' }), { target: { value: 'sakai' } });
+  assert.ok(!screen.queryByRole('spinbutton', { name: '緯度' }));
+  assert.ok(!screen.queryByRole('spinbutton', { name: '経度' }));
+  fireEvent.click(screen.getByRole('button', { name: 'プラン計算', exact: true }));
+  await screen.findByRole('region', { name: 'プラン結果' });
+  assert.deepEqual(bodies[0].origin, { lat: 34.573936, lon: 135.481506, label: '堺・南瓦町周辺' });
+  fireEvent.change(screen.getByRole('combobox', { name: '大体の出発エリア（車）' }), { target: { value: 'namba' } });
+  assert.ok(!screen.queryByRole('region', { name: 'プラン結果' }));
+  assert.ok(!screen.queryByRole('region', { name: 'What-ifシミュレーション' }));
+  assert.ok(screen.getByRole('link', { name: '地図で代表地点を確認' }).href.includes('34.667603,135.501724'));
+});
+
+test('自動: 東大阪を選ぶと提案APIに反映し、変更後は古い提案を取り下げる', async () => {
+  const bodies = [];
+  globalThis.fetch = async (url, init) => {
+    if (String(url).endsWith('/stations')) return json(stations);
+    bodies.push(JSON.parse(init.body));
+    return json({ candidate_count: 1, warnings: [], plans: [{ ...result,
+      key: 'efficiency', label: '東大阪の提案', description: '', reason: '', finish_time: '09:26' }] });
+  };
+  render(React.createElement(SuggestRoute));
+  await screen.findByRole('checkbox', { name: '大阪府' });
+  fireEvent.change(screen.getByRole('combobox', { name: '大体の出発エリア（車）' }), { target: { value: 'higashiosaka' } });
+  fireEvent.click(screen.getByRole('button', { name: 'プランを提案', exact: true }));
+  await screen.findByRole('heading', { name: '東大阪の提案' });
+  assert.deepEqual(bodies[0].origin, { lat: 34.680332, lon: 135.598755, label: '東大阪・荒本周辺' });
+  fireEvent.change(screen.getByRole('combobox', { name: '大体の出発エリア（車）' }), { target: { value: 'yao' } });
+  assert.ok(!screen.queryByRole('heading', { name: '東大阪の提案' }));
 });
 
 test('自動: 通信失敗では古い提案を取り下げ、同じ条件で再試行できる', async () => {

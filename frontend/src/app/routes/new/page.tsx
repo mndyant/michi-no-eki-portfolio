@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import OriginPicker from "@/app/_components/OriginPicker";
+import { DEFAULT_ORIGIN } from "@/lib/origins";
 import {
   ApiError,
   calculateManualRoute,
@@ -11,10 +13,11 @@ import {
 } from "@/lib/api";
 import RouteResult from "./_components/RouteResult";
 import WhatIfPanel from "./_components/WhatIfPanel";
+import { PUBLIC_DEMO } from "@/lib/demo";
 
 type VisitedFilter = "all" | "unvisited" | "visited";
 
-const OSAKA_STATION = { lat: "34.7025", lon: "135.4959", label: "大阪駅" };
+
 
 // 座標なしのシード駅はAPIで計算できないため、選択前に判定する。
 // station_idがNOID_で始まるのはGML(国土数値情報)に未収録なだけの印であり、座標の有無とは無関係
@@ -32,9 +35,7 @@ export default function NewRoutePage() {
   const [nameFilter, setNameFilter] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [stayInputs, setStayInputs] = useState<Record<number, string>>({});
-  const [originLat, setOriginLat] = useState(OSAKA_STATION.lat);
-  const [originLon, setOriginLon] = useState(OSAKA_STATION.lon);
-  const [originLabel, setOriginLabel] = useState(OSAKA_STATION.label);
+  const [origin, setOrigin] = useState(DEFAULT_ORIGIN);
   const [departureTime, setDepartureTime] = useState("08:00");
   // 訪問日（任意）。指定すると曜日別営業時間・定休日をサーバー側で評価する（Issue #71）
   const [visitDate, setVisitDate] = useState("");
@@ -58,7 +59,10 @@ export default function NewRoutePage() {
       setLoadError(null);
       try {
         const data = await fetchStations();
-        if (!controller.signal.aborted) setStations(data);
+        if (!controller.signal.aborted) {
+          setStations(data);
+          if (PUBLIC_DEMO) setSelectedIds(["P35_721", "P35_718", "P35_720"].flatMap((key) => data.filter((s) => s.station_id === key).map((s) => s.id)));
+        }
       } catch (error) {
         if (!controller.signal.aborted) {
           setLoadError(error instanceof ApiError ? error.message : "道の駅の取得に失敗しました");
@@ -114,11 +118,6 @@ export default function NewRoutePage() {
     });
   }
 
-  function useOsakaStation() {
-    setOriginLat(OSAKA_STATION.lat);
-    setOriginLon(OSAKA_STATION.lon);
-    setOriginLabel(OSAKA_STATION.label);
-  }
 
   function clearPreviousResult() {
     setResult(null);
@@ -129,12 +128,6 @@ export default function NewRoutePage() {
     event.preventDefault();
     clearPreviousResult();
     setCalculateError(null);
-    const lat = Number(originLat);
-    const lon = Number(originLon);
-    if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) {
-      setCalculateError("出発地の緯度は-90〜90、経度は-180〜180の数値で入力してください。");
-      return;
-    }
     if (selectedIds.length === 0) {
       setCalculateError("訪問する道の駅を1駅以上選択してください。");
       return;
@@ -154,7 +147,7 @@ export default function NewRoutePage() {
     setCalculating(true);
     try {
       const request: ManualRouteRequest = {
-        origin: { lat, lon, label: originLabel || null },
+        origin,
         departure_mode: reverseMode ? "latest" : "fixed",
         departure_time: reverseMode ? null : departureTime,
         return_by: reverseMode && returnToOrigin && returnBy ? returnBy : null,
@@ -198,16 +191,13 @@ export default function NewRoutePage() {
       </div>
 
       <form onSubmit={handleCalculate} onInvalidCapture={clearPreviousResult} className="flex flex-col gap-6">
+        {PUBLIC_DEMO && <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-950"><div><h2 className="font-bold">まずは南河内3駅のサンプル</h2><p className="mt-1 text-sm">最初は梅田・大阪駅周辺から車で出る条件です。下で出発エリアや駅を変更できます。</p><p className="mt-2 text-sm" aria-live="polite">現在の選択：{selectedStations.map((s) => s.name).join(" → ") || "駅を選択してください"}</p></div><button type="submit" disabled={loading || calculating || selectedIds.length === 0} className="rounded-lg bg-emerald-800 px-5 py-3 font-semibold text-white disabled:opacity-50">{calculating ? "計算中…" : "この条件で計算する"}</button></section>}
         <section aria-labelledby="origin-heading" className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="origin-heading" className="font-semibold">1. 出発条件</h2>
-            <button type="button" onClick={useOsakaStation} className="rounded border border-zinc-300 px-3 py-1.5 text-sm hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900">
-              大阪駅をセット
-            </button>
           </div>
+          <OriginPicker value={origin} disabled={calculating} onChange={(next) => { setOrigin(next); clearPreviousResult(); setCalculateError(null); }} />
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="flex flex-col gap-1 text-sm"><span className="text-zinc-600 dark:text-zinc-400">緯度</span><input required type="number" step="any" min="-90" max="90" value={originLat} onChange={(e) => { setOriginLat(e.target.value); setOriginLabel("指定地点"); }} className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900" /></label>
-            <label className="flex flex-col gap-1 text-sm"><span className="text-zinc-600 dark:text-zinc-400">経度</span><input required type="number" step="any" min="-180" max="180" value={originLon} onChange={(e) => { setOriginLon(e.target.value); setOriginLabel("指定地点"); }} className="rounded border border-zinc-300 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900" /></label>
             <label className="flex flex-col gap-1 text-sm"><span className="text-zinc-600 dark:text-zinc-400">出発時刻{reverseMode && "（逆算のため入力不要）"}</span><input required={!reverseMode} disabled={reverseMode} type="time" value={departureTime} onChange={(e) => setDepartureTime(e.target.value)} className="rounded border border-zinc-300 bg-white px-3 py-2 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900" /></label>
             <label className="flex items-center gap-2 self-end rounded border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"><input type="checkbox" checked={returnToOrigin} onChange={(e) => setReturnToOrigin(e.target.checked)} className="size-4" />出発地へ戻る（往復）</label>
           </div>

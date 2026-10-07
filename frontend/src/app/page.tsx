@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { PUBLIC_DEMO } from "@/lib/demo";
+import DemoHome from "./DemoHome";
 
 // トップページ
 // アプリの目的（巡回計画の意思決定支援）を簡潔に説明し、
 // 「道の駅一覧」「ルート作成」への導線を提供する。
 // フェーズ2で追加した「ルート作成」画面への導線も提供する。
 export default function Home() {
+  if (PUBLIC_DEMO) return <DemoHome />;
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-16">
       <section className="flex flex-col gap-3">

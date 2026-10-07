@@ -43,7 +43,7 @@ export interface Station {
   seasonal_specialty: unknown[];
   user_memo: string | null;
   source: string;
-  last_verified_at: string;
+  last_verified_at: string | null;
 }
 
 // GET /api/clusters のレスポンス型（schemas/cluster.py ClusterRead相当）

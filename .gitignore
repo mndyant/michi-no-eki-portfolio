@@ -92,3 +92,10 @@ backend/scratch/
 *.pem
 *.key
 credentials*.json
+
+# Public demo generated assets and Vercel local metadata
+/public/
+/site/
+.vercel/
+
+.vercel
