@@ -12,6 +12,7 @@ const { render, screen, fireEvent, cleanup, waitFor, act } = await import('@test
 const { default: NewRoute } = await import('../src/app/routes/new/page.tsx');
 const { default: SuggestRoute } = await import('../src/app/routes/suggest/page.tsx');
 const { default: WhatIf } = await import('../src/app/routes/new/_components/WhatIfPanel.tsx');
+const { default: RouteResult } = await import('../src/app/routes/new/_components/RouteResult.tsx');
 const originalFetch = globalThis.fetch;
 afterEach(() => { cleanup(); globalThis.fetch = originalFetch; });
 
@@ -26,6 +27,17 @@ const base = { origin: { lat: 34.7, lon: 135.5 }, departure_mode: 'fixed',
   departure_time: '09:00', station_ids: [1], stay_overrides: {}, return_to_origin: false,
   highway_legs: [], visit_date: null, auto_order: false };
 const json = value => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } });
+
+test('帰着時刻には開店待ちを含め、判定を締切の範囲で表示する', () => {
+  render(React.createElement(RouteResult, {
+    result: { ...result, totals: { travel_min: 67, distance_km: 43, stay_min: 45, wait_min: 19 } },
+    departureTime: '08:00', returnToOrigin: true, stationById: new Map(),
+  }));
+  assert.ok(screen.getByText('10:11', { exact: true }));
+  assert.ok(screen.getByText(/開店待ち 19分/));
+  assert.ok(screen.getAllByText('締切に余裕あり').length > 0);
+  assert.ok(!screen.queryByText('問題なし'));
+});
 
 async function manualSuccess() {
   globalThis.fetch = async url => json(String(url).endsWith('/stations') ? stations : result);
