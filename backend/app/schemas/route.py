@@ -178,6 +178,7 @@ class RouteTotals(BaseModel):
     travel_min: int
     distance_km: float
     stay_min: int
+    wait_min: int = 0
 
 
 class ManualRouteResponse(BaseModel):

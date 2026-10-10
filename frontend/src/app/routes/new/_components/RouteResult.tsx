@@ -23,7 +23,7 @@ function calculateReturnTime(
   result: ManualRouteResponse
 ): string {
   const [hours, minutes] = departureTime.split(":").map(Number);
-  const totalMinutes = hours * 60 + minutes + result.totals.travel_min + result.totals.stay_min;
+  const totalMinutes = hours * 60 + minutes + result.totals.travel_min + result.totals.stay_min + (result.totals.wait_min ?? 0);
   const dayOffset = Math.floor(totalMinutes / (24 * 60));
   const timeInDay = totalMinutes % (24 * 60);
   const time = `${String(Math.floor(timeInDay / 60)).padStart(2, "0")}:${String(
@@ -53,7 +53,7 @@ function UnconfirmedHoursBadge({ station }: { station: Station | undefined }) {
 
 function WarningBadges({ stop }: { stop: RouteStop }) {
   if (stop.warnings.length === 0) {
-    return <span className="text-xs text-emerald-700 dark:text-emerald-400">問題なし</span>;
+    return <span className="text-xs text-emerald-700 dark:text-emerald-400">締切に余裕あり</span>;
   }
 
   return (
@@ -90,6 +90,12 @@ export default function RouteResult({
           直前に計算した条件の結果です。条件を編集した後は「プラン計算」で再計算してください。
         </p>
       </div>
+
+      {(result.totals.wait_min ?? 0) > 0 && (
+        <p className="text-sm text-amber-800 dark:text-amber-300">
+          開店待ち {formatMinutes(result.totals.wait_min ?? 0)}を含む時刻表です。営業時間は各駅の案内で確認してください。
+        </p>
+      )}
 
       {result.warnings.includes("waypoints_truncated") && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">

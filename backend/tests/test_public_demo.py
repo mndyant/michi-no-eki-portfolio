@@ -11,6 +11,24 @@ client = TestClient(app)
 PLAN = {"origin": {"lat": 34.7025, "lon": 135.4959}, "departure_time": "08:00", "station_ids": [5, 2, 4]}
 
 
+def test_default_sample_waits_for_opening_without_a_visit_date():
+    response = client.post("/api/routes/manual", json=PLAN)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["stops"][0]["arrival"] == "08:41"
+    assert body["stops"][0]["departure"] == "09:15"
+    assert body["stops"][0]["warnings"] == ["wait_for_open"]
+    assert body["stops"][1]["arrival"] == "09:29"
+    assert body["stops"][2]["departure"] == "10:11"
+    assert body["totals"]["wait_min"] == 19
+    dated = client.post("/api/routes/manual", json={**PLAN, "visit_date": "2026-10-10"})
+    assert dated.json() == body
+    delayed = client.post("/api/routes/what-if", json={**PLAN, "delay_min": 60})
+    assert delayed.status_code == 200
+    assert delayed.json()["stops"][0]["departure"] == "09:56"
+    assert delayed.json()["totals"]["wait_min"] == 0
+
+
 def test_public_stations_match_approved_json_exactly():
     source = json.loads((Path(__file__).resolve().parents[2] / "data/demo/stations_osaka.json").read_text(encoding="utf-8"))
     response = client.get("/api/stations")
