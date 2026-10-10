@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from datetime import date
+import json
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -45,7 +46,19 @@ def test_resolve_open_time_returns_none_for_unparsable_start() -> None:
     assert resolve_open_time('{"mon": "24時間営業-"}', "mon") is None
     assert resolve_open_time('{"mon": " - "}', "mon") is None
     # 1桁時はstrptimeが受理するため従来どおり返す
-    assert resolve_open_time('{"mon": "9:00-17:00"}', "mon") == "9:00"
+    assert resolve_open_time('{"mon": "9:00-17:00"}', "mon") == "09:00"
+
+
+def test_date_free_opening_requires_all_seven_days_to_agree() -> None:
+    hours = {day: "09:00-17:00" for day in ("mon", "tue", "wed", "thu", "fri", "sat", "sun")}
+    hours["mon"] = "9:00-17:00"
+    assert resolve_open_time(json.dumps(hours), None) == "09:00"
+    hours["sun"] = "10:00-17:00"
+    assert resolve_open_time(json.dumps(hours), None) is None
+    del hours["sun"]
+    assert resolve_open_time(json.dumps(hours), None) is None
+    hours["sun"] = None
+    assert resolve_open_time(json.dumps(hours), None) is None
 
 
 def test_is_closed_day_matches_comma_separated_codes() -> None:

@@ -24,8 +24,7 @@ class TimetableStation:
     lon: float
     stamp_deadline: str
     stay_min: int
-    # 訪問日の曜日から解決した開店時刻（"HH:MM"）。visit_date未指定や
-    # 曜日別営業時間が未確認の場合はNone（＝開店待ち制約を課さない）
+    # 訪問曜日または全曜日共通の開店時刻。解決できない場合だけNone。
     open_time: str | None = None
     # 訪問日がその駅の定休日に該当するか（Issue #71）。自動除外はせず警告のみに使う
     is_closed_day: bool = False
@@ -41,6 +40,7 @@ class TimetableStop:
     stamp_deadline: str
     margin_min: int
     warnings: tuple[str, ...]
+    wait_min: int = 0
 
 
 def calculate_latest_departures(
@@ -150,6 +150,7 @@ def calculate_timetable(
                 stamp_deadline=station.stamp_deadline,
                 margin_min=margin_min,
                 warnings=tuple(warnings),
+                wait_min=int((stay_start - arrival).total_seconds() // 60),
             )
         )
         current = departure

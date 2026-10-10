@@ -184,13 +184,13 @@ def compute_route(
         estimates, return_estimate, payload.highway_legs
     )
     # 訪問日が指定されていれば曜日を特定し、曜日別営業時間・定休日を制約に反映する（Issue #71）。
-    # 未指定時はNone/Falseのまま＝従来通り曜日を考慮しない（後方互換）
+    # 未指定でも全曜日共通の開店時刻は使う。曜日による差や定休日は推測しない。
     weekday = weekday_code(date.fromisoformat(payload.visit_date)) if payload.visit_date else None
     timetable_stations = [
         TimetableStation(
             station.id, station.name, station.lat, station.lon, station.stamp_end,
             payload.stay_overrides.get(station.id, station.stay_time_min_default),
-            open_time=resolve_open_time(station.business_hours, weekday) if weekday else None,
+            open_time=resolve_open_time(station.business_hours, weekday),
             is_closed_day=is_closed_day(station.closed_days, weekday) if weekday else False,
         )
         for station in stations
@@ -230,6 +230,7 @@ def compute_route(
             travel_min=sum(ceil(item.duration_min) for item in all_estimates),
             distance_km=round(sum(item.distance_km for item in all_estimates), 2),
             stay_min=sum(stop.stay_min for stop in timetable),
+            wait_min=sum(stop.wait_min for stop in timetable),
         ),
         google_maps_url=maps_url,
         warnings=warnings + extra_warnings,
