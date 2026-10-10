@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import json
 from pathlib import Path
 
 import pytest
@@ -77,7 +78,7 @@ def test_manual_route_applies_stay_override(route_client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert [stop["stay_min"] for stop in body["stops"]] == [15, 30, 15]
-    assert body["totals"] == {"travel_min": 180, "distance_km": 30.0, "stay_min": 60}
+    assert body["totals"] == {"travel_min": 180, "distance_km": 30.0, "stay_min": 60, "wait_min": 0}
 
 
 def test_manual_route_return_to_origin_adds_return_leg(route_client: TestClient) -> None:
@@ -202,6 +203,9 @@ def hours_route_client(monkeypatch: pytest.MonkeyPatch):
                 ),
                 # 同じ木曜が定休日
                 make_station(2, "B", 35.1, 135.1, closed_days="thu,fri"),
+                make_station(3, "全曜日10時開店", 35.2, 135.2, business_hours=json.dumps({
+                    day: "10:00-17:00" for day in ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+                })),
             ]
         )
         db.commit()
@@ -210,6 +214,29 @@ def hours_route_client(monkeypatch: pytest.MonkeyPatch):
     )
     yield TestClient(app)
     app.dependency_overrides.clear()
+
+
+def test_date_free_route_waits_for_common_opening_and_counts_wait(
+    hours_route_client: TestClient,
+) -> None:
+    response = hours_route_client.post(
+        "/api/routes/manual", json=_payload(station_ids=[3], return_to_origin=True),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["stops"][0]["arrival"] == "09:00"
+    assert body["stops"][0]["departure"] == "10:15"
+    assert body["stops"][0]["warnings"] == ["wait_for_open"]
+    assert body["totals"]["wait_min"] == 60
+
+
+def test_date_free_route_does_not_guess_missing_weekday_hours(
+    hours_route_client: TestClient,
+) -> None:
+    response = hours_route_client.post("/api/routes/manual", json=_payload(station_ids=[1]))
+    assert response.status_code == 200
+    assert response.json()["stops"][0]["departure"] == "09:15"
+    assert response.json()["totals"]["wait_min"] == 0
 
 
 # --- 山間部の道路係数補正（Issue #73） ---

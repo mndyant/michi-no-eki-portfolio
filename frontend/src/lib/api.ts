@@ -100,6 +100,8 @@ export interface RouteTotals {
   travel_min: number;
   distance_km: number;
   stay_min: number;
+  // 開店待ち。旧APIとの互換のため省略可能。
+  wait_min?: number;
 }
 
 // POST /api/routes/manual のレスポンス（schemas/route.py ManualRouteResponse相当）

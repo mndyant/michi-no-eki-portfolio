@@ -15,10 +15,11 @@ def weekday_code(visit_date: date) -> str:
     return WEEKDAY_CODES[visit_date.weekday()]
 
 
-def resolve_open_time(business_hours_json: str, weekday: str) -> str | None:
+def resolve_open_time(business_hours_json: str, weekday: str | None) -> str | None:
     """business_hoursのJSON文字列（例: {"mon": "09:00-17:00", ...}）から、
     指定曜日の開店時刻（"HH:MM"）を取り出す。
 
+    日付未指定なら、全7曜日で開店時刻が一致する場合だけその時刻を使う。
     該当曜日の設定がない、または"開始-終了"形式で解析できない場合はNoneを返す
     （＝営業開始の制約を課さない。未確認データで誤警告を出さないため）。
     """
@@ -28,8 +29,11 @@ def resolve_open_time(business_hours_json: str, weekday: str) -> str | None:
         return None
     if not isinstance(hours, dict):
         return None
+    if weekday is None:
+        openings = [resolve_open_time(business_hours_json, day) for day in WEEKDAY_CODES]
+        return openings[0] if openings[0] is not None and len(set(openings)) == 1 else None
     value = hours.get(weekday)
-    if not value or "-" not in value:
+    if not isinstance(value, str) or "-" not in value:
         return None
     start, _, _end = value.partition("-")
     start = start.strip()
@@ -41,7 +45,7 @@ def resolve_open_time(business_hours_json: str, weekday: str) -> str | None:
         datetime.strptime(start, "%H:%M")
     except ValueError:
         return None
-    return start
+    return datetime.strptime(start, "%H:%M").strftime("%H:%M")
 
 
 def is_closed_day(closed_days: str, weekday: str) -> bool:
