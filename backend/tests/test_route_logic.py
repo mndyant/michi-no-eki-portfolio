@@ -106,3 +106,32 @@ def test_google_maps_return_destination_is_origin() -> None:
     assert warnings == []
     assert query["destination"] == query["origin"]
     assert query["waypoints"] == ["35.000000,136.000000"]
+
+
+def test_google_maps_uses_station_names_but_keeps_origin_coordinates() -> None:
+    origin = MapPoint(34.7, 135.5, "梅田・大阪駅周辺")
+    stations = [
+        MapPoint(34.53304, 135.5878, "しらとりの郷・羽曳野"),
+        MapPoint(34.51679, 135.6584, "道の駅 近つ飛鳥の里太子"),
+        MapPoint(34.47844, 135.6171, "かなん"),
+    ]
+    url, warnings = build_google_maps_url(origin, stations)
+    query = parse_qs(urlparse(url).query)
+    assert warnings == []
+    assert query["origin"] == ["34.700000,135.500000"]
+    assert query["waypoints"] == ["道の駅 しらとりの郷・羽曳野|道の駅 近つ飛鳥の里太子"]
+    assert query["destination"] == ["道の駅 かなん"]
+
+    return_url, _ = build_google_maps_url(origin, stations, True)
+    return_query = parse_qs(urlparse(return_url).query)
+    assert return_query["destination"] == return_query["origin"]
+    assert return_query["waypoints"] == [
+        "道の駅 しらとりの郷・羽曳野|道の駅 近つ飛鳥の里太子|道の駅 かなん"
+    ]
+
+
+def test_google_maps_unnamed_station_falls_back_to_coordinates() -> None:
+    url, _ = build_google_maps_url(
+        MapPoint(34.7, 135.5), [MapPoint(35.0, 136.0, "   ")]
+    )
+    assert parse_qs(urlparse(url).query)["destination"] == ["35.000000,136.000000"]

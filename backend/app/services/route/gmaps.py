@@ -20,6 +20,14 @@ def _coordinate(point: MapPoint) -> str:
     return f"{point.lat:.6f},{point.lon:.6f}"
 
 
+def _station_query(point: MapPoint) -> str:
+    """座標の逆引きで併設店舗が選ばれないよう、道の駅の名称で検索する。"""
+    label = (point.label or "").strip()
+    if not label:
+        return _coordinate(point)
+    return label if label.startswith("道の駅") else f"道の駅 {label}"
+
+
 def build_google_maps_url(
     origin: MapPoint,
     stations: Sequence[MapPoint],
@@ -39,8 +47,8 @@ def build_google_maps_url(
     params = {
         "api": "1",
         "origin": _coordinate(origin),
-        "destination": _coordinate(destination),
+        "destination": _coordinate(origin) if return_to_origin else _station_query(destination),
     }
     if waypoint_candidates:
-        params["waypoints"] = "|".join(_coordinate(point) for point in waypoint_candidates)
+        params["waypoints"] = "|".join(_station_query(point) for point in waypoint_candidates)
     return f"{GOOGLE_MAPS_DIR_URL}?{urlencode(params, safe=',|')}", warnings

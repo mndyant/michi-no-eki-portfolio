@@ -2,6 +2,7 @@
 import json
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from fastapi.testclient import TestClient
 from app.public_demo import app, demo_db
@@ -9,6 +10,31 @@ from app.models.station import Station
 
 client = TestClient(app)
 PLAN = {"origin": {"lat": 34.7025, "lon": 135.4959}, "departure_time": "08:00", "station_ids": [5, 2, 4]}
+
+
+def test_sample_maps_links_use_station_names_in_manual_whatif_and_suggestions():
+    def check_route(route):
+        query = parse_qs(urlparse(route["google_maps_url"]).query)
+        names = [f"道の駅 {stop['name']}" for stop in route["stops"]]
+        assert query["origin"] == ["34.702500,135.495900"]
+        assert query["destination"] == [names[-1]]
+        assert query.get("waypoints", []) == (["|".join(names[:-1])] if len(names) > 1 else [])
+
+    for path, changes in [
+        ("manual", {}),
+        ("what-if", {"delay_min": 60}),
+        ("what-if", {"excluded_station_ids": [2, 4]}),
+    ]:
+        response = client.post(f"/api/routes/{path}", json={**PLAN, **changes})
+        assert response.status_code == 200
+        check_route(response.json())
+    suggestions = client.post("/api/routes/suggest", json={
+        "origin": PLAN["origin"], "departure_time": "08:00", "max_stations": 3,
+    })
+    assert suggestions.status_code == 200
+    assert suggestions.json()["plans"]
+    for plan in suggestions.json()["plans"]:
+        check_route(plan)
 
 
 def test_public_stations_match_approved_json_exactly():
